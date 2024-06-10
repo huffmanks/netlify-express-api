@@ -11,23 +11,23 @@ import cors from "cors";
 const api = express();
 api.use(express.json());
 
+//
 api.use(
   cors({
-    origin: [`/^(http:\/\/)?localhost/`, "https://huffmanks.com"],
+    origin: [/^http:\/\/localhost(:\d+)?$/, "https://huffmanks.com"],
   })
 );
 
 const router = Router();
 router.get("/hello", (req, res) => res.send("Hello World!"));
 
-router.post("/weather-data", async (req, res) => {
-  const { weatherSearch } = req.body;
-
-  if (!weatherSearch) {
-    res.status(500).send("No search term provided.");
-  }
-
+router.get("/weather-data/:weatherSearch", async (req: express.Request, res: express.Response) => {
   try {
+    const weatherSearch = req.params.weatherSearch;
+    if (!weatherSearch) {
+      throw Error("No search term provided.");
+    }
+
     const GEONAMES_USER = process.env.GEONAMES_USER;
     const OPEN_WEATHER_MAP_API_KEY = process.env.OPEN_WEATHER_MAP_API_KEY;
 
