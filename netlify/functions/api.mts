@@ -20,7 +20,7 @@ api.use(
 const router = Router();
 router.get("/hello", (req, res) => res.send("Hello World!"));
 
-router.get("/weather-data", async (req, res) => {
+router.post("/weather-data", async (req, res) => {
   const { weatherSearch } = req.body;
 
   if (!weatherSearch) {
