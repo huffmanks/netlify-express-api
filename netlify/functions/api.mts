@@ -1,25 +1,14 @@
-import chromium from "@sparticuz/chromium";
+// will need to install packages
+// npm i @sparticuz/chromium@133.0.0 puppeteer-core@24.3.1
+// and update netlify.toml
+// external_node_modules = ["express", "cors", "@sparticuz/chromium"]
+
+// import chromium from "@sparticuz/chromium";
 import cors from "cors";
 import express, { Router } from "express";
 import rateLimit from "express-rate-limit";
-import puppeteer from "puppeteer-core";
+// import puppeteer from "puppeteer-core";
 import serverless from "serverless-http";
-
-chromium.setGraphicsMode = false;
-// const isLocal = process.env.NETLIFY_DEV === "true" || process.env.NODE_ENV === "development";
-// async function getLocalChromePath() {
-//   try {
-//     if (isLocal) {
-//       return puppeteer.executablePath();
-//     } else {
-//       const chromePath = await chromium.executablePath();
-//       return chromePath || undefined;
-//     }
-//   } catch (error) {
-//     console.error(error);
-//     return undefined;
-//   }
-// }
 
 const api = express();
 api.use(express.json({ limit: "10mb" }));
@@ -105,73 +94,58 @@ router.get("/weather-data/:weatherSearch", async (req: express.Request, res: exp
   }
 });
 
-router.post("/generate-pdf", async (req, res) => {
-  try {
-    const { htmlContent } = req.body;
+// router.post("/generate-pdf", async (req, res) => {
+//   try {
+//     const { htmlContent } = req.body;
 
-    if (!htmlContent) {
-      return res.status(400).send("Missing htmlContent in request body");
-    }
+//     if (!htmlContent) {
+//       return res.status(400).send("Missing htmlContent in request body");
+//     }
 
-    // const executablePath = await chromium.executablePath(); //await getLocalChromePath();
+//     chromium.setGraphicsMode = false;
 
-    console.log("Starting Puppeteer...");
-    const browser = await puppeteer.launch({
-      args: chromium.args,
-      defaultViewport: chromium.defaultViewport,
-      executablePath: process.env.CHROME_EXECUTABLE_PATH || (await chromium.executablePath("/var/task/node_modules/@sparticuz/chromium/bin")),
-      headless: chromium.headless,
-    });
+//     console.log("Starting Puppeteer...");
+//     const browser = await puppeteer.launch({
+//       args: chromium.args,
+//       defaultViewport: chromium.defaultViewport,
+//       executablePath: process.env.CHROME_EXECUTABLE_PATH || (await chromium.executablePath("/var/task/node_modules/@sparticuz/chromium/bin")),
+//       headless: chromium.headless,
+//     });
 
-    console.log("Opening new page...");
-    const page = await browser.newPage();
+//     console.log("Opening new page...");
+//     const page = await browser.newPage();
 
-    console.log("Setting page content...");
-    await page.setContent(htmlContent, { waitUntil: "networkidle0" });
+//     console.log("Setting page content...");
 
-    console.log("Generating PDF...");
-    const pdfBuffer = await page.pdf({
-      format: "letter",
-      printBackground: true,
-      margin: {
-        top: 40,
-        right: 0,
-        bottom: 40,
-        left: 0,
-      },
-    });
+//     await page.setContent(htmlContent, { waitUntil: "networkidle0" });
 
-    console.log("PDF generated successfully");
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", 'inline; filename="generated.pdf"');
-    res.status(200);
-    res.end(pdfBuffer);
+//     console.log("Generating PDF...");
+//     const pdfBuffer = await page.pdf({
+//       format: "letter",
+//       printBackground: true,
+//       margin: {
+//         top: 40,
+//         right: 0,
+//         bottom: 40,
+//         left: 0,
+//       },
+//     });
 
-    await browser.close();
+//     console.log("PDF generated successfully");
+//     await browser.close();
 
-    // Create a temp file path
-    // const tmpFileName = `tmp-${new Date().toString()}.pdf`;
-    // const tmpFilePath = path.join("/tmp", tmpFileName);
+//     res.setHeader("Content-Type", "application/pdf");
+//     res.setHeader("Content-Disposition", 'inline; filename="generated.pdf"');
 
-    // // Save the PDF
-    // fs.writeFileSync(tmpFilePath, pdfBuffer);
-
-    // // Send it
-    // res.setHeader("Content-Type", "application/pdf");
-    // res.setHeader("Content-Disposition", 'inline; filename="generated.pdf"');
-    // res.sendFile(tmpFilePath, (err) => {
-    //   // Clean up temp file after response is sent
-    //   fs.unlink(tmpFilePath, () => {});
-    //   if (err) {
-    //     console.error("Error sending file:", err);
-    //     res.status(500).end();
-    //   }
-    // });
-  } catch (error) {
-    console.error("Error generating PDF:", error);
-    res.status(500).send("Internal Server Error");
-  }
-});
+//     // tested with local save and works properly. something with the netlify runtime
+//     // fs.writeFileSync("./test.pdf");
+//     // is sent but PDF arrives blank
+//     res.status(200).end(pdfBuffer);
+//   } catch (error) {
+//     console.error("Error generating PDF:", error);
+//     res.status(500).send("Internal Server Error");
+//   }
+// });
 
 api.use("/api/", router);
 

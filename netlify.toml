@@ -3,7 +3,7 @@
   functions = "netlify/functions"
   publish = "."
 [functions]
-  external_node_modules = ["express", "cors", "@sparticuz/chromium"]
+  external_node_modules = ["express", "cors"]
   node_bundler = "esbuild"
 [[redirects]]
   force = true
