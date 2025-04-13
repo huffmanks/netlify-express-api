@@ -1,20 +1,48 @@
+import chromium from "@sparticuz/chromium";
+import cors from "cors";
 import express, { Router } from "express";
+import rateLimit from "express-rate-limit";
+import puppeteer from "puppeteer-core";
 import serverless from "serverless-http";
 
-import cors from "cors";
-// import chromium from "@sparticuz/chromium";
-// import puppeteer from "puppeteer-core";
-
-// chromium.setHeadlessMode = true;
-// chromium.setGraphicsMode = false;
+chromium.setGraphicsMode = false;
+// const isLocal = process.env.NETLIFY_DEV === "true" || process.env.NODE_ENV === "development";
+// async function getLocalChromePath() {
+//   try {
+//     if (isLocal) {
+//       return puppeteer.executablePath();
+//     } else {
+//       const chromePath = await chromium.executablePath();
+//       return chromePath || undefined;
+//     }
+//   } catch (error) {
+//     console.error(error);
+//     return undefined;
+//   }
+// }
 
 const api = express();
-api.use(express.json());
+api.use(express.json({ limit: "10mb" }));
 
-//
 api.use(
   cors({
     origin: [/^http:\/\/localhost(:\d+)?$/, "https://huffmanks.com"],
+  })
+);
+
+api.use(
+  rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 50,
+    standardHeaders: "draft-8",
+    legacyHeaders: false,
+    skipFailedRequests: true,
+    keyGenerator: (req) => {
+      const forwarded = req.headers["x-forwarded-for"];
+      const ip = typeof forwarded === "string" ? forwarded.split(",")[0].trim() : Array.isArray(forwarded) ? forwarded[0].split(",")[0].trim() : undefined;
+
+      return ip || req.ip || "localhost";
+    },
   })
 );
 
@@ -77,50 +105,73 @@ router.get("/weather-data/:weatherSearch", async (req: express.Request, res: exp
   }
 });
 
-// router.post("/generate-pdf", async (req, res) => {
-//   try {
-//     const { htmlContent } = req.body;
+router.post("/generate-pdf", async (req, res) => {
+  try {
+    const { htmlContent } = req.body;
 
-//     if (!htmlContent) {
-//       return res.status(400).send("Missing htmlContent in request body");
-//     }
+    if (!htmlContent) {
+      return res.status(400).send("Missing htmlContent in request body");
+    }
 
-//     console.log("Starting Puppeteer...");
-//     const browser = await puppeteer.launch({
-//       args: chromium.args,
-//       defaultViewport: chromium.defaultViewport,
-//       // executablePath: process.env.CHROME_EXECUTABLE_PATH || (await chromium.executablePath()),
-//       executablePath: process.env.CHROME_EXECUTABLE_PATH || (await chromium.executablePath("https://github.com/Sparticuz/chromium/releases/download/v113.0.1/chromium-v113.0.1-pack.tar")),
-//     });
+    const executablePath = await chromium.executablePath(); //await getLocalChromePath();
 
-//     console.log("Opening new page...");
-//     const page = await browser.newPage();
+    console.log("Starting Puppeteer...");
+    const browser = await puppeteer.launch({
+      args: chromium.args,
+      defaultViewport: chromium.defaultViewport,
+      executablePath,
+      headless: chromium.headless,
+    });
 
-//     console.log("Setting page content...");
-//     await page.setContent(htmlContent, { waitUntil: "networkidle0" });
+    console.log("Opening new page...");
+    const page = await browser.newPage();
 
-//     console.log("Generating PDF...");
-//     const pdfBuffer = await page.pdf({
-//       format: "letter",
-//       printBackground: true,
-//       margin: {
-//         top: 40,
-//         right: 0,
-//         bottom: 40,
-//         left: 0,
-//       },
-//     });
+    console.log("Setting page content...");
+    await page.setContent(htmlContent, { waitUntil: "networkidle0" });
 
-//     console.log("PDF generated successfully");
-//     res.type("application/pdf");
-//     res.send(pdfBuffer);
+    console.log("Generating PDF...");
+    const pdfBuffer = await page.pdf({
+      format: "letter",
+      printBackground: true,
+      margin: {
+        top: 40,
+        right: 0,
+        bottom: 40,
+        left: 0,
+      },
+    });
 
-//     await browser.close();
-//   } catch (error) {
-//     console.error("Error generating PDF:", error);
-//     res.status(500).send("Internal Server Error");
-//   }
-// });
+    console.log("PDF generated successfully");
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", 'inline; filename="generated.pdf"');
+    res.status(200);
+    res.end(pdfBuffer);
+
+    await browser.close();
+
+    // Create a temp file path
+    // const tmpFileName = `tmp-${new Date().toString()}.pdf`;
+    // const tmpFilePath = path.join("/tmp", tmpFileName);
+
+    // // Save the PDF
+    // fs.writeFileSync(tmpFilePath, pdfBuffer);
+
+    // // Send it
+    // res.setHeader("Content-Type", "application/pdf");
+    // res.setHeader("Content-Disposition", 'inline; filename="generated.pdf"');
+    // res.sendFile(tmpFilePath, (err) => {
+    //   // Clean up temp file after response is sent
+    //   fs.unlink(tmpFilePath, () => {});
+    //   if (err) {
+    //     console.error("Error sending file:", err);
+    //     res.status(500).end();
+    //   }
+    // });
+  } catch (error) {
+    console.error("Error generating PDF:", error);
+    res.status(500).send("Internal Server Error");
+  }
+});
 
 api.use("/api/", router);
 
