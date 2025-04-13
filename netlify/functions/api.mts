@@ -113,13 +113,13 @@ router.post("/generate-pdf", async (req, res) => {
       return res.status(400).send("Missing htmlContent in request body");
     }
 
-    const executablePath = await chromium.executablePath(); //await getLocalChromePath();
+    // const executablePath = await chromium.executablePath(); //await getLocalChromePath();
 
     console.log("Starting Puppeteer...");
     const browser = await puppeteer.launch({
       args: chromium.args,
       defaultViewport: chromium.defaultViewport,
-      executablePath,
+      executablePath: process.env.CHROME_EXECUTABLE_PATH || (await chromium.executablePath("/var/task/node_modules/@sparticuz/chromium/bin")),
       headless: chromium.headless,
     });
 
