@@ -87,7 +87,38 @@ router.get("/weather-data/:weatherSearch", async (req: express.Request, res: exp
 
     const weatherData = await weatherResponse.json();
 
-    res.status(200).send(weatherData);
+    const locationUrl = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`;
+    const locationResponse = await fetch(locationUrl);
+    let locationData:
+      | undefined
+      | {
+          town: string;
+          county: string;
+          state: string;
+          "ISO3166-2-lvl4": string;
+          postcode: string;
+          country: string;
+          country_code: string;
+        };
+
+    if (locationResponse.ok) {
+      const rawLocation = await locationResponse.json();
+      const address = rawLocation.address || {};
+
+      locationData = {
+        town: address.city ? address.city : address.town,
+        county: address.county,
+        state: address.state,
+        "ISO3166-2-lvl4": address["ISO3166-2-lvl4"],
+        postcode: address.postcode,
+        country: address.country,
+        country_code: address.country_code,
+      };
+    } else {
+      locationData = undefined;
+    }
+
+    res.status(200).send({ weatherData, locationData });
   } catch (error: any) {
     const message = error?.message ? error.message : error;
     res.status(500).send(message);
